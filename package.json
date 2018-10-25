@@ -1,0 +1,24 @@
+{
+  "name": "project2",
+  "version": "1.0.0",
+  "description": "Udacity Blockchain Course - Project2 - By Yevgeni Mumblat ym1983@gmail.com",
+  "main": "levelSandbox.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "UdacityBlockP2"
+  },
+  "keywords": [
+    "Private",
+    "Blockchain",
+    "Node"
+  ],
+  "author": "Yevgeni Mumblat",
+  "license": "ISC",
+  "dependencies": {
+    "crypto-js": "^3.1.9-1",
+    "level": "^4.0.0"
+  }
+}
