@@ -30,8 +30,6 @@ class Block{
 class Blockchain{
   constructor(){
 		this.db = level(chainDB);
-		this.length = 0;
-    this.addBlock(new Block("First block in the chain - Genesis block"));
   }
 
   // Add new blocks
@@ -40,26 +38,28 @@ class Blockchain{
 		let self = this;
 		return new Promise(function(resolve,reject) {
 			self.getBlockHeight().then((height) => {
-			newBlock.height = height+1;
+			let blockIndex = height;
+			if (height === 0){
+				blockIndex += 1;
+				let genBlock = new Block("First block in the chain - Genesis block");
+				genBlock.time = new Date().getTime().toString().slice(0,-3);
+				genBlock.hash = SHA256(JSON.stringify(newBlock)).toString();
+				self.db.put(genBlock.height, JSON.stringify(genBlock).toString(), function(err) {
+						if (err) {
+								console.log('Genesis block ' + newBlock.height + ' submission failed', err);
+								reject(err);
+						}
+				});
+				console.log('Block ' + newBlock.height + ' submission performed');
+				console.log(genBlock);
+			}
+			newBlock.height = blockIndex;
 			// UTC timestamp
 			newBlock.time = new Date().getTime().toString().slice(0,-3);
 			// previous block hash
-			if(newBlock.height > 1){
-				self.getBlock(height).then((block) => {
-					newBlock.previousBlockHash = block.hash;
-					// Block hash with SHA256 using newBlock and converting to a string
-					newBlock.hash = SHA256(JSON.stringify(newBlock)).toString();
-					// Adding block object to chain
-					self.db.put(newBlock.height, JSON.stringify(newBlock).toString(), function(err) {
-							if (err) {
-									console.log('Block ' + newBlock.height + ' submission failed', err);
-									reject(err);
-							}
-					});
-					console.log('Block ' + newBlock.height + ' submission performed');
-					resolve(newBlock);
-				});
-			} else {
+			self.getBlock(blockIndex-1).then((block) => {
+				newBlock.previousBlockHash = block.hash;
+				// Block hash with SHA256 using newBlock and converting to a string
 				newBlock.hash = SHA256(JSON.stringify(newBlock)).toString();
 				// Adding block object to chain
 				self.db.put(newBlock.height, JSON.stringify(newBlock).toString(), function(err) {
@@ -70,10 +70,10 @@ class Blockchain{
 				});
 				console.log('Block ' + newBlock.height + ' submission performed');
 				resolve(newBlock);
-			}
+			});
     },(reason) => {
 			console.log('Could not get height ',reason);
-				reject(reason);
+			reject(reason);
 
 			});
 		});
