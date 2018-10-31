@@ -6,22 +6,10 @@ const level = require('level');
 
 const SHA256 = require('crypto-js/sha256');
 
+const BlockClass = require('./simpleBlock');
+
 const chainDB = './chaindata';
 
-
-/* ===== Block Class ==============================
-|  Class with a constructor for block 			   |
-|  ===============================================*/
-
-class Block{
-	constructor(data){
-     this.hash = "",
-     this.height = 0,
-     this.body = data,
-     this.time = 0,
-     this.previousBlockHash = ""
-    }
-}
 
 /* ===== Blockchain Class ==========================
 |  Class with a constructor for new blockchain 		|
@@ -38,12 +26,12 @@ class Blockchain{
 		let self = this;
 		return new Promise(function(resolve,reject) {
 			self.getBlockHeight().then((height) => {
-			let blockIndex = height;
-			if (height === 0){
+			let blockIndex = height + 1;
+			if (height === -1){
 				blockIndex += 1;
-				let genBlock = new Block("First block in the chain - Genesis block");
+				let genBlock = new BlockClass.Block("First block in the chain - Genesis block");
 				genBlock.time = new Date().getTime().toString().slice(0,-3);
-				genBlock.hash = SHA256(JSON.stringify(newBlock)).toString();
+				genBlock.hash = SHA256(JSON.stringify(genBlock)).toString();
 				self.db.put(genBlock.height, JSON.stringify(genBlock).toString(), function(err) {
 						if (err) {
 								console.log('Genesis block ' + newBlock.height + ' submission failed', err);
@@ -83,7 +71,7 @@ class Blockchain{
 	getBlockHeight(){
 		let self = this;
 		return new Promise(function(resolve, reject){
-			let i = 0;
+			let i = -1;
 			self.db.createReadStream()
 			.on('data', function (data) {
 			      // Count each object inserted
@@ -108,7 +96,7 @@ class Blockchain{
 					 self.db.get(key, (err, value) => {
 					 		if (err) return console.log('Not found!', err);
 
-							let jblock = Object.assign(new Block, JSON.parse(value));
+							let jblock = Object.assign(new BlockClass.Block, JSON.parse(value));
 							resolve(jblock);
 					 });
 		});
@@ -143,21 +131,22 @@ class Blockchain{
 	validateChain(){
 		let self = this;
 		let errorLog = [];
-		this.getBlockHeight().then((height) => {
+		this.getBlockHeight().then((blockHeight) => {
+			let height = blockHeight + 1;
 			let promises = [];
-	    for (var i = 1; i <= height; i++) {
-	      let promisFunction = function(index) {
+	    for (var i = 0; i < height; i++) {
+	      let promiseFunction = function(index) {
   				return new Promise (function(resolve,reject){
 							let validationPromises = []
 							validationPromises[0] = self.validateBlock(index);
-							if (index < height) {
+							if (index < blockHeight) {
 								validationPromises[1] = self.getBlock(index);
 								validationPromises[2] = self.getBlock(index+1);
 							}
 							Promise.all(validationPromises).then(function(values){
 								// validate block
 								if (!values[0]) errorLog.push(index);
-								if (index < height){
+								if (index < blockHeight){
 									// compare blocks hash link
 									let	blockHash = values[1].hash;
  					 				let previousHash = values[2].previousBlockHash;
@@ -170,7 +159,7 @@ class Blockchain{
 
 					});
 				};
-				promises[i-1] = promisFunction(i);
+				promises[i-1] = promiseFunction(i);
 				}
 				Promise.all(promises).then(function(values) {
 					if (errorLog.length>0) {
@@ -218,4 +207,3 @@ class Blockchain{
 
 // Export the class
 module.exports.Blockchain = Blockchain;
-module.exports.Block = Block;
